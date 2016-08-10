@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+
+<head>
+  <style>
+    rect.bordered {
+      stroke: #E6E6E6;
+      stroke-width: 2px;
+    }
+
+    text.mono {
+      font-size: 9pt;
+      font-family: Consolas, courier;
+      fill: #aaa;
+    }
+
+    text.axis-workweek {
+      fill: #000;
+    }
+
+    text.axis-worktime {
+      fill: #000;
+    }
+  </style>
+  <script src="http://d3js.org/d3.v3.js"></script>
+</head>
+
+<body>
+  <div id="chart"></div>
+
+  <script type="text/javascript">
+    var margin = {
+      top: 30,
+      right: 0,
+      bottom: 100,
+      left: 90
+    },
+    width = 600 - margin.left - margin.right,
+    height = 600 - margin.top - margin.bottom,
+    gridSize = Math.floor(width / 24),
+    legendElementWidth = gridSize * 2,
+    
+    // X-axis labels
+    // This has to be generated dynamically
+    loop_ids1 = ["HL_1S72_010", "HL_1S72_039", "HL_1S72_005", "HL_1VX6_037", "HL_2A64_002", "HL_2GDI_002", "HL_2GDI_004", "HL_2HOJ_002", "HL_2QBG_011", "HL_3DHS_002", "HL_3J7A_004", "HL_3U5F_006", "HL_3U5H_005", "HL_4A1B_005", "HL_4A1B_037", "HL_4BPP_006", "HL_4CUV_005", "HL_4CUX_006", "HL_4IOA_009", "HL_4QCN_009", "HL_4W21_039"];
+      
+    // Y-axis labels
+    // This has to be generated dynamically
+    loop_ids2 = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21" ];
+
+    // Open and load the csv file
+    d3.csv("discrepancy_parsed.csv", function(error, data) {
+
+      data.forEach(function(d) {
+        loop_id1 = d.loop_id1;
+        loop_id2 = d.loop_id2;
+        coordx = +d.coordx
+        coordy = +d.coordy
+        discrepancy = +d.discrepancy;
+        //console.log(d.discrepancy);
+      });
+      
+      //var colorScale = d3.scale.quantile()
+              //.domain([0, buckets - 1, d3.max(data, function (d) { return d.discrepancy; })])
+              //.range(colors);
+
+      var colorScale = d3.scale.linear()
+        .domain([0,1])
+        .range(['yellow', 'red'])
+
+      // Set the svg container
+      var svg = d3.select("#chart").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // Draw the x-axis label
+      var dayLabels = svg.selectAll(".dayLabel")
+        .data(loop_ids1)
+        .enter().append("text")
+        .text(function(d) {
+          return d;
+        })
+        .attr("x", 0)
+        .attr("y", function(d, i) {
+          return i * gridSize;
+        })
+        .style("text-anchor", "end")
+        .attr("transform", "translate(-5," + gridSize / 1.5 + ")")
+        .attr("class", function(d, i) { console.log(i);
+          return ((i >= 0) 
+            ? "dayLabel mono axis axis-workweek" : "dayLabel mono axis");
+        });
+
+      // Draw the y-axis label
+      var timeLabels = svg.selectAll(".timeLabel")
+        .data(loop_ids2)
+        .enter().append("text")
+        //.attr("font-size", 12)
+        //.attr("glyph-orientation-vertical: 180")
+        .text(function(d) {
+          return d;
+        })
+        .attr("x", function(d, i) {
+          return  (i * gridSize);
+        })
+        .attr("y", 0)
+        .style("text-anchor", "middle")
+        .attr("transform", "translate(" + gridSize / 2 + '-5' + ")")
+        .attr("class", function(d, i) {
+          return ((i >= 0) ? "timeLabel mono axis axis-worktime" : "timeLabel mono axis");
+        });
+
+      // Create the paired elements
+      var heatMap = svg.selectAll(".coordy")
+        .data(data, function(d) { return d.coordx+':'+d.coordy;});
+              
+      // Draw the grid to make the heatmap
+      heatMap.enter().append("rect")
+        .attr("x", function(d) { return d.coordy * gridSize; })
+        .attr("y", function(d) { return d.coordx * gridSize; })
+        .attr("rx", 4)
+        .attr("ry", 4)
+        .attr("class", "bordered")
+        .attr("width", gridSize)
+        .attr("height", gridSize)
+        .style("fill", function(d) {
+            return colorScale(d.discrepancy);
+        });
+
+      // Show the value of discrepancy between two motifs when the user hovers over a heatmap grid
+      heatMap.append("title").text(function(d) {
+        return d.loop_id1 + ':' + d.loop_id2 + ' = ' + d.discrepancy;
+      });
+
+      heatMap.exit().remove();
+
+      var legend = svg.selectAll(".legend")
+        .data(colorScale.domain())
+
+      legend.enter().append("g")
+        .attr("class", "legend");
+
+      // Draw the legend 
+      legend.append("rect")
+        .attr("x", function(d, i) {
+          return legendElementWidth * i;
+        })
+        .attr("y", height)
+        .attr("width", legendElementWidth)
+        .attr("height", gridSize / 2)
+        .style("fill", function(d) {
+          return colorScale(d);
+        });
+
+      // Add text to the legend
+      legend.append("text")
+        .attr("class", "mono")
+        .text(function(d) {
+          return (d);
+        })
+        .attr("x", function(d, i) {
+          return legendElementWidth * i;
+        })
+        .attr("y", height + gridSize);
+
+      legend.exit().remove();
+
+    });
+  </script>
+</body>
+
+</html>
